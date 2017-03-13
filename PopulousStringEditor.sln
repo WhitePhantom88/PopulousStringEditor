@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PopulousString", "PopulousString\PopulousString.csproj", "{EE407B5B-C5CB-40C7-98A0-43A13A28FF6C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PopulousStringEditor", "PopulousStringEditor\PopulousStringEditor.csproj", "{09A32D89-0FF8-45A6-9B17-4EC89DC1DA3C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EE407B5B-C5CB-40C7-98A0-43A13A28FF6C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE407B5B-C5CB-40C7-98A0-43A13A28FF6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE407B5B-C5CB-40C7-98A0-43A13A28FF6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE407B5B-C5CB-40C7-98A0-43A13A28FF6C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09A32D89-0FF8-45A6-9B17-4EC89DC1DA3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09A32D89-0FF8-45A6-9B17-4EC89DC1DA3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09A32D89-0FF8-45A6-9B17-4EC89DC1DA3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09A32D89-0FF8-45A6-9B17-4EC89DC1DA3C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

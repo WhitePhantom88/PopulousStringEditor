@@ -1,0 +1,63 @@
+﻿<Window x:Class="PopulousStringEditor.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:PopulousStringEditor"
+        xmlns:Views="clr-namespace:PopulousStringEditor.Views"
+        mc:Ignorable="d"
+        Title="Populous String Editor" Icon="populous.ico" Height="600" Width="850">
+
+    <!-- CREATE THE COMMAND BINDINGS USED BY THE VARIOUS CONTROLS ON THIS WINDOW. -->
+    <Window.CommandBindings>
+        <CommandBinding Command="local:MainWindowCommands.NewStringsFile"
+            CanExecute="NewStringsFileCommand_CanExecute"
+            Executed="NewStringsFileCommand_Executed" />
+        <CommandBinding Command="local:MainWindowCommands.OpenStringsFile"
+            CanExecute="OpenStringsCommand_CanExecute"
+            Executed="OpenStringsFileCommand_Executed" />
+        <CommandBinding Command="local:MainWindowCommands.OpenReferenceStringsFile"
+            CanExecute="OpenReferenceStringsFileCommand_CanExecute"
+            Executed="OpenReferenceStringsFileCommand_Executed" />
+        <CommandBinding Command="local:MainWindowCommands.CloseAllFiles"
+            CanExecute="CloseAllFilesCommand_CanExecute"
+            Executed="CloseAllFilesCommand_Executed" />
+        <CommandBinding Command="local:MainWindowCommands.ExitApplication"
+            CanExecute="ExitApplicationCommand_CanExecute"
+            Executed="ExitApplicationCommand_Executed" />
+        <CommandBinding Command="local:MainWindowCommands.SaveStringsFile"
+            CanExecute="SaveStringsFileCommand_CanExecute"
+            Executed="SaveStringsFileCommand_Executed" />
+        <CommandBinding Command="local:MainWindowCommands.SaveStringsFileAs"
+            CanExecute="SaveStringsFileAsCommand_CanExecute"
+            Executed="SaveStringsFileAsCommand_Executed" />
+        
+
+    </Window.CommandBindings>
+    <DockPanel>
+        <!-- CREATE THE MENU FOR THE WINDOW. -->
+        <!-- The menu is placed in the top position of the parent dock panel since that is the typical
+             place for menus.-->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem Command="local:MainWindowCommands.NewStringsFile" />
+                <Separator />
+                <MenuItem Command="local:MainWindowCommands.OpenStringsFile" />
+                <MenuItem Command="local:MainWindowCommands.OpenReferenceStringsFile" />
+                <Separator />
+                <MenuItem Command="local:MainWindowCommands.CloseAllFiles" />
+                <Separator />
+                <MenuItem Command="local:MainWindowCommands.SaveStringsFile" />
+                <MenuItem Command="local:MainWindowCommands.SaveStringsFileAs" />
+                <Separator />
+                <MenuItem Command="local:MainWindowCommands.ExitApplication" />
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_About..." />
+            </MenuItem>
+        </Menu>
+        
+        <!-- ADD THE CONTROL FOR VIEWING THE STRING COMPARISONS. -->
+        <Views:StringComparisonView x:Name="StringComparisonsControl" Loaded="StringComparisonsControl_Loaded" Grid.ColumnSpan="2" />
+    </DockPanel>
+</Window>
