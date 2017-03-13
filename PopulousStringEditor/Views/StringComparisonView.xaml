@@ -47,8 +47,11 @@
                     <DataGridTextColumn.EditingElementStyle>
                         <Style TargetType="TextBox">
                             <!-- Allow the text to wrap onto multiple lines so the user doesn't have to do a bunch
-                                of horizontal scrolling to read all of the text. -->
+                                 of horizontal scrolling to read all of the text. -->
                             <Setter Property="TextWrapping" Value="Wrap" />
+                            <!-- Remove the border so that the cell's size does not grow, causing content to shift
+                                 on the screen, which can be distracting to users. -->
+                            <Setter Property="BorderThickness" Value="0" />
                         </Style>
                     </DataGridTextColumn.EditingElementStyle>
                 </DataGridTextColumn>
