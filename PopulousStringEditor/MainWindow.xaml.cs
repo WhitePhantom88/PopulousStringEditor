@@ -112,6 +112,19 @@ namespace PopulousStringEditor
 
         #region Event Handlers
         /// <summary>
+        /// Handles the actions that should take place when this window is loaded.
+        /// </summary>
+        /// <param name="sender">The window that triggered his event.</param>
+        /// <param name="eventArguments">The event arguments.</param>
+        private void Window_Loaded(object sender, RoutedEventArgs eventArguments)
+        {
+            // HIDE THE REFERENCE STRINGS COLUMN.
+            // No reference strings are being displayed, so there's no need to waste
+            // screen space displaying a column for them.
+            StringComparisonsControl.ReferenceStringsVisiblity = Visibility.Hidden;
+        }
+
+        /// <summary>
         /// Handles the actions that should take place when the string comparisons control is loaded.
         /// </summary>
         /// <param name="sender">The string comparisons control which triggered this event.</param>
@@ -317,6 +330,11 @@ namespace PopulousStringEditor
 
             // UPDATE THE CURRENT STRING FILE PATH.
             currentStringsFilePath = null;
+
+            // HIDE THE REFERENCE STRINGS COLUMN.
+            // No reference strings are being displayed, so there's no need to waste
+            // screen space displaying a column for them.
+            StringComparisonsControl.ReferenceStringsVisiblity = Visibility.Hidden;
         }
         #endregion
 
@@ -638,6 +656,9 @@ namespace PopulousStringEditor
 
                 // SET THE DATA CONTEXT.
                 StringComparisonsControl.DataContext = stringComparisonViewModel;
+
+                // SHOW THE REFERENCE STRINGS COLUMN.
+                StringComparisonsControl.ReferenceStringsVisiblity = Visibility.Visible;
             }
             catch (Exception exception)
             {
@@ -703,7 +724,6 @@ namespace PopulousStringEditor
                     MessageBoxImage.Exclamation);
             }
         }
-
         #endregion
     }
 }
