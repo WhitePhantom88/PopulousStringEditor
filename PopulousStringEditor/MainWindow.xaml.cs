@@ -98,6 +98,16 @@ namespace PopulousStringEditor
         {
             get { return stringComparisonViewModel.StringComparisons.Any(); }
         }
+
+        /// <summary>Gets whether or not any reference strings are available.</summary>
+        private bool AnyReferenceStringsAvailable
+        {
+            get
+            {
+                return stringComparisonViewModel.StringComparisons.Any(
+                    currentStringComparison => !string.IsNullOrEmpty(currentStringComparison.ReferenceString));
+            }
+        }
         #endregion
 
         #region Event Handlers
@@ -137,55 +147,36 @@ namespace PopulousStringEditor
             // CHECK TO SEE IF THERE ARE ANY UNSAVED CHANGES.
             if (unsavedStringFileModificationsExist)
             {
-                const string UnsavedChangesMessage = "Your strings file has unsaved changes.  Save before continuing?";
-                const string UnsavedChangesTitle = "Unsaved Changes";
-                MessageBoxResult userSelection = MessageBox.Show(
-                    this,
-                    UnsavedChangesMessage,
-                    UnsavedChangesTitle,
-                    MessageBoxButton.YesNoCancel,
-                    MessageBoxImage.Question);
-                switch (userSelection)
+                // WARN THE USER ABOUT UNSAVED CHANGES AND ASK THEM WHAT THEY WANT TO DO.
+                const string UnsavedChangesMessage = "Your strings file has unsaved changes.  Save before making a new file?";
+                bool userCanceledAction = false;
+                PromptUserAboutUnsavedChangesAndHandleDecision(UnsavedChangesMessage, out userCanceledAction);
+
+                // CHECK TO SEE IF THE USER CANCELED THEIR ACTION.
+                if (userCanceledAction)
                 {
-                    case MessageBoxResult.Yes:
-
-                        break;
-                    case MessageBoxResult.No:
-
-                        break;
-                    case MessageBoxResult.Cancel:
-
-                        break;
+                    // Exit early since the user canceled this action.
+                    return;
                 }
             }
 
             // CHECK TO SEE IF THE REFERENCE STRINGS HAVE BEEN LOADED.
             // A new strings file should only be allowed to be created if an existing reference file has
             // been loaded.
-            bool anyReferenceStringsAlreadyLoaded = stringComparisonViewModel.StringComparisons.Any(
-                currentStringComparison => !string.IsNullOrEmpty(currentStringComparison.ReferenceString));
+            bool anyReferenceStringsAlreadyLoaded = AnyReferenceStringsAvailable;
             if (anyReferenceStringsAlreadyLoaded)
             {
-                // CLEAR THE DATA CONTEXT SO THAT IT APPEARS TO HAVE CHANGED.
-                // Clearing the data context will allow it to be updated with new contents once the file is loaded.
-                StringComparisonsControl.DataContext = null;
-
-                // CLEAR ALL OF THE EXISTING STRINGS.
-                stringComparisonViewModel.ClearStrings();
-
-                // SET THE DATA CONTEXT.
-                StringComparisonsControl.DataContext = stringComparisonViewModel;
+                // RESET THE DISPLAY OF THIS WINDOW FOR THE NEW STRINGS FILE.
+                ResetForNewStringsFile();
             }
             else
             {
-                // TRIGGER THE EVENT FOR LOADING THE REFERENCE STRINGS FILE.
-                OpenReferenceStringsFileCommand_Executed(sender, eventArguments);
-
-                // CHECK TO SEE IF REFERENCE STRINGS WERE LOADED.
-                bool anyReferenceStringsLoaded = stringComparisonViewModel.StringComparisons.Any(
-                    currentStringComparison => !string.IsNullOrEmpty(currentStringComparison.ReferenceString));
-                if (!anyReferenceStringsLoaded)
+                // PROMPT THE USER TO SPECIFY A FILE TO OPEN.
+                string referenceStringsFilePath = GetPathForOpeningReferenceStringsFileFromUser();
+                bool referenceStringFilePathSpecified = !string.IsNullOrWhiteSpace(referenceStringsFilePath);
+                if (!referenceStringFilePathSpecified)
                 {
+                    // A reference strings file must be loaded to create a new strings file.
                     // Alert the user since this sort of thing is not common in most applications.
                     const string NoReferenceStringsMessage = "New files can only be created when matched against a reference file.";
                     const string NoReferenceStringsTitle = "No Reference Strings";
@@ -197,6 +188,9 @@ namespace PopulousStringEditor
                         MessageBoxImage.Exclamation);
                     return;
                 }
+
+                // OPEN AND DISPLAY THE CONTENTS OF THE REFERENCE STRINGS FILE.
+                OpenAndDisplayReferenceStringsFile(referenceStringsFilePath);
             }
         }
         #endregion
@@ -220,45 +214,17 @@ namespace PopulousStringEditor
         /// <param name="eventArguments">The event arguments.</param>
         private void OpenStringsFileCommand_Executed(object sender, ExecutedRoutedEventArgs eventArguments)
         {
-            // DISPLAY THE FILE OPEN DIALOG.
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Filter = StringFileDialogFilters;
-            openFileDialog.Title = "Open String File";
-            bool? dialogResult = openFileDialog.ShowDialog(this);
-
-            // DETERMINE WHAT THE USER CHOSE TO DO.
-            bool fileSpecified = (dialogResult.HasValue && dialogResult.Value);
-            if (!fileSpecified)
+            // PROMPT THE USER TO SPECIFY A FILE TO OPEN.
+            string stringsFilePath = GetPathForOpeningStringFileFromUser();
+            bool stringFilePathSpecified = !string.IsNullOrWhiteSpace(stringsFilePath);
+            if (!stringFilePathSpecified)
             {
-                // Exit early since the user canceled the dialog.
+                // Exit early since the user canceled selecting a file to open.
                 return;
             }
 
-            try
-            {
-                // CLEAR THE DATA CONTEXT SO THAT IT APPEARS TO HAVE CHANGED.
-                // Clearing the data context will allow it to be updated with new contents once the file is loaded.
-                StringComparisonsControl.DataContext = null;
-
-                // LOAD THE FILE.
-                stringComparisonViewModel.LoadStrings(openFileDialog.FileName);
-
-                // UPDATE THE CURRENT STRING FILE PATH.
-                currentStringsFilePath = openFileDialog.FileName;
-
-                // SET THE DATA CONTEXT.
-                StringComparisonsControl.DataContext = stringComparisonViewModel;
-            }
-            catch (Exception exception)
-            {
-                const string MessageBoxCaption = "Open File Failed";
-                MessageBox.Show(
-                    this,
-                    GetErrorMessage(exception),
-                    MessageBoxCaption,
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Exclamation);
-            }
+            // OPEN AND DISPLAY THE STRINGS FILE.
+            OpenAndDisplayStringsFile(stringsFilePath);
         }
         #endregion
 
@@ -281,42 +247,33 @@ namespace PopulousStringEditor
         /// <param name="eventArguments">The event arguments.</param>
         private void OpenReferenceStringsFileCommand_Executed(object sender, ExecutedRoutedEventArgs eventArguments)
         {
-            // DISPLAY THE FILE OPEN DIALOG.
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Filter = StringFileDialogFilters;
-            openFileDialog.Title = "Open Reference String File";
-            bool? dialogResult = openFileDialog.ShowDialog(this);
-
-            // DETERMINE WHAT THE USER CHOSE TO DO.
-            bool fileSpecified = (dialogResult.HasValue && dialogResult.Value);
-            if (!fileSpecified)
+            // CHECK TO SEE IF THERE ARE ANY UNSAVED CHANGES.
+            if (unsavedStringFileModificationsExist)
             {
-                // Exit early since the user canceled the dialog.
+                // WARN THE USER ABOUT UNSAVED CHANGES AND ASK THEM WHAT THEY WANT TO DO.
+                const string UnsavedChangesMessage = "Your strings file has unsaved changes.  Save before opening a different file?";
+                bool userCanceledAction = false;
+                PromptUserAboutUnsavedChangesAndHandleDecision(UnsavedChangesMessage, out userCanceledAction);
+
+                // CHECK TO SEE IF THE USER CANCELED THEIR ACTION.
+                if (userCanceledAction)
+                {
+                    // Exit early since the user canceled this action.
+                    return;
+                }
+            }
+
+            // PROMPT THE USER TO SPECIFY A FILE TO OPEN.
+            string referenceStringsFilePath = GetPathForOpeningReferenceStringsFileFromUser();
+            bool referenceStringFilePathSpecified = !string.IsNullOrWhiteSpace(referenceStringsFilePath);
+            if (!referenceStringFilePathSpecified)
+            {
+                // Exit early since the user canceled selecting a file to open.
                 return;
             }
 
-            try
-            {
-                // CLEAR THE DATA CONTEXT SO THAT IT APPEARS TO HAVE CHANGED.
-                // Clearing the data context will allow it to be updated with new contents once the file is loaded.
-                StringComparisonsControl.DataContext = null;
-
-                // LOAD THE FILE.
-                stringComparisonViewModel.LoadReferenceStrings(openFileDialog.FileName);
-
-                // SET THE DATA CONTEXT.
-                StringComparisonsControl.DataContext = stringComparisonViewModel;
-            }
-            catch (Exception exception)
-            {
-                const string MessageBoxCaption = "Open File Failed";
-                MessageBox.Show(
-                    this,
-                    GetErrorMessage(exception),
-                    MessageBoxCaption,
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Exclamation);
-            }
+            // OPEN AND DISPLAY THE CONTENTS OF THE REFERENCE STRINGS FILE.
+            OpenAndDisplayReferenceStringsFile(referenceStringsFilePath);
         }
         #endregion
 
@@ -339,6 +296,22 @@ namespace PopulousStringEditor
         /// <param name="eventArguments">The event arguments.</param>
         private void CloseAllFilesCommand_Executed(object sender, ExecutedRoutedEventArgs eventArguments)
         {
+            // CHECK TO SEE IF THERE ARE ANY UNSAVED CHANGES.
+            if (unsavedStringFileModificationsExist)
+            {
+                // WARN THE USER ABOUT UNSAVED CHANGES AND ASK THEM WHAT THEY WANT TO DO.
+                const string UnsavedChangesMessage = "Your strings file has unsaved changes.  Save before closing files?";
+                bool userCanceledAction = false;
+                PromptUserAboutUnsavedChangesAndHandleDecision(UnsavedChangesMessage, out userCanceledAction);
+
+                // CHECK TO SEE IF THE USER CANCELED THEIR ACTION.
+                if (userCanceledAction)
+                {
+                    // Exit early since the user canceled this action.
+                    return;
+                }
+            }
+
             // CLEAR ALL OF THE STRING COMPARISONS.
             stringComparisonViewModel.ClearStringComparisons();
 
@@ -368,19 +341,22 @@ namespace PopulousStringEditor
         {
             // DETERMINE IF A SAVE FILE PATH HAS ALREADY BEEN SPECIFIED.
             bool saveFileAlreadySpecified = !string.IsNullOrWhiteSpace(currentStringsFilePath);
-            if (saveFileAlreadySpecified)
+            if (!saveFileAlreadySpecified)
             {
-                // SAVE THE FILE.
-                // No additional information is required since the save file path has already been specified.
-                stringComparisonViewModel.SaveStrings(currentStringsFilePath);
-            }
-            else
-            {
-                // TRIGGER A SAVE AS.
+                // PROMPT THE USER TO SPECIFY A FILE TO SAVE UNDER.
                 // Since the file path of the file to save has not been specified, treat this as a Save As operation
                 // to get the file path from the user.
-                SaveStringsFileAsCommand_Executed(sender, eventArguments);
+                currentStringsFilePath = GetPathForSavingStringsFileFromUser();
+                bool stringFilePathSpecified = !string.IsNullOrWhiteSpace(currentStringsFilePath);
+                if (!stringFilePathSpecified)
+                {
+                    // Exit early since the user canceled selecting a file to save.
+                    return;
+                }
             }
+
+            // SAVE THE FILE.
+            SaveStringsFile(currentStringsFilePath);
         }
         #endregion
 
@@ -403,41 +379,17 @@ namespace PopulousStringEditor
         /// <param name="eventArguments">The event arguments.</param>
         private void SaveStringsFileAsCommand_Executed(object sender, ExecutedRoutedEventArgs eventArguments)
         {
-            // DISPLAY THE FILE SAVE DIALOG.
-            SaveFileDialog saveFileDialog = new SaveFileDialog();
-            saveFileDialog.Filter = StringFileDialogFilters;
-            saveFileDialog.Title = "Save As";
-            bool? dialogResult = saveFileDialog.ShowDialog(this);
-
-            // DETERMINE WHAT THE USER CHOSE TO DO.
-            bool fileSpecified = (dialogResult.HasValue && dialogResult.Value);
-            if (!fileSpecified)
+            // PROMPT THE USER TO SPECIFY A FILE TO SAVE UNDER.
+            string stringsFilePath = GetPathForSavingStringsFileFromUser();
+            bool stringFilePathSpecified = !string.IsNullOrWhiteSpace(stringsFilePath);
+            if (!stringFilePathSpecified)
             {
-                // Exit early since the user canceled the dialog.
+                // Exit early since the user canceled selecting a file to save.
                 return;
             }
 
-            try
-            {
-                // SAVE THE FILE.
-                stringComparisonViewModel.SaveStrings(saveFileDialog.FileName);
-
-                // MARK THE FILE AS NO LONGER HAVING UNSAVED CHANGES.
-                unsavedStringFileModificationsExist = false;
-
-                // UPDATE THE CURRENT STRING FILE PATH.
-                currentStringsFilePath = saveFileDialog.FileName;
-            }
-            catch (Exception exception)
-            {
-                const string MessageBoxCaption = "Save File Failed";
-                MessageBox.Show(
-                    this,
-                    GetErrorMessage(exception),
-                    MessageBoxCaption,
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Exclamation);
-            }
+            // SAVE THE FILE.
+            SaveStringsFile(stringsFilePath);
         }
         #endregion
 
@@ -500,6 +452,258 @@ namespace PopulousStringEditor
 
             return errorMessage.ToString();
         }
+
+        /// <summary>
+        /// Prompts the user about unsaved changes remaining and handles his or her decision.
+        /// </summary>
+        /// <param name="unsavedChangesMessage">The message to display about unsaved changes.
+        /// This should include the context of the user's most recent action.</param>
+        /// <param name="userCanceledDialog">Indicates whether or not the user canceled their action.
+        /// True if they canceled or false otherwise.</param>
+        private void PromptUserAboutUnsavedChangesAndHandleDecision(
+            string unsavedChangesMessage,
+            out bool userCanceledDialog)
+        {
+            // SET THE OUTPUT PARAMETER TO A DEFAULT KNOWN VALUE.
+            userCanceledDialog = false;
+
+            // WARN THE USER ABOUT UNSAVED CHANGES.
+            const string UnsavedChangesTitle = "Unsaved Changes";
+            MessageBoxResult userSelection = MessageBox.Show(
+                this,
+                unsavedChangesMessage,
+                UnsavedChangesTitle,
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Question);
+            switch (userSelection)
+            {
+                case MessageBoxResult.Yes:
+                    // DETERMINE IF A SAVE FILE PATH HAS ALREADY BEEN SPECIFIED.
+                    bool saveFileAlreadySpecified = !string.IsNullOrWhiteSpace(currentStringsFilePath);
+                    if (!saveFileAlreadySpecified)
+                    {
+                        // PROMPT THE USER TO SPECIFY A FILE TO SAVE UNDER.
+                        // Since the file path of the file to save has not been specified, treat this as a Save As operation
+                        // to get the file path from the user.
+                        currentStringsFilePath = GetPathForSavingStringsFileFromUser();
+                        bool stringFilePathSpecified = !string.IsNullOrWhiteSpace(currentStringsFilePath);
+                        if (!stringFilePathSpecified)
+                        {
+                            // Exit early since the user canceled selecting a file to save.
+                            userCanceledDialog = true;
+                            return;
+                        }
+                    }
+
+                    // SAVE THE FILE.
+                    SaveStringsFile(currentStringsFilePath);
+                    break;
+                case MessageBoxResult.No:
+                    // Intentionally do nothing.
+                    break;
+                case MessageBoxResult.Cancel:
+                    userCanceledDialog = true;
+                    break;
+                default:
+                    // Nothing can be done since the user's selection is unknown.
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Resets the display of this window for a new strings file.  The current strings file path
+        /// and the unsaved changes flag are cleared.
+        /// </summary>
+        private void ResetForNewStringsFile()
+        {
+            // CLEAR THE DATA CONTEXT SO THAT IT APPEARS TO HAVE CHANGED.
+            // Clearing the data context will allow it to be updated with new contents once the file is loaded.
+            StringComparisonsControl.DataContext = null;
+
+            // CLEAR ALL OF THE EXISTING STRINGS.
+            stringComparisonViewModel.ClearStrings();
+
+            // SET THE DATA CONTEXT.
+            StringComparisonsControl.DataContext = stringComparisonViewModel;
+
+            // UPDATE THE CURRENT STRING FILE PATH.
+            currentStringsFilePath = null;
+
+            // MARK THE FILE AS NO LONGER HAVING UNSAVED CHANGES.
+            // Since the file is new and empty, there are no unsaved changes.
+            unsavedStringFileModificationsExist = false;
+        }
+
+        /// <summary>
+        /// Gets the path to the strings file to open from the user.
+        /// </summary>
+        /// <returns>The absolute path to the strings file to open or null
+        /// if the user canceled selecting a file.</returns>
+        private string GetPathForOpeningStringFileFromUser()
+        {
+            // DISPLAY THE FILE OPEN DIALOG.
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = StringFileDialogFilters;
+            openFileDialog.Title = "Open String File";
+            bool? dialogResult = openFileDialog.ShowDialog(this);
+
+            // DETERMINE WHAT THE USER CHOSE TO DO.
+            bool fileSpecified = (dialogResult.HasValue && dialogResult.Value);
+            if (!fileSpecified)
+            {
+                // Return indicating that the user canceled selecting a file to open.
+                return null;
+            }
+
+            return openFileDialog.FileName;
+        }
+
+        /// <summary>
+        /// Opens the strings file and updates the controls of this window to display the content of
+        /// the opened file.  The current strings file path and unsaved changes flag are also updated.
+        /// </summary>
+        /// <param name="filePath">An absolute or relative path to the strings file to open.</param>
+        private void OpenAndDisplayStringsFile(string filePath)
+        {
+            try
+            {
+                // CLEAR THE DATA CONTEXT SO THAT IT APPEARS TO HAVE CHANGED.
+                // Clearing the data context will allow it to be updated with new contents once the file is loaded.
+                StringComparisonsControl.DataContext = null;
+
+                // LOAD THE FILE.
+                stringComparisonViewModel.LoadStrings(filePath);
+
+                // UPDATE THE CURRENT STRING FILE PATH.
+                currentStringsFilePath = filePath;
+
+                // SET THE DATA CONTEXT.
+                StringComparisonsControl.DataContext = stringComparisonViewModel;
+
+                // MARK THE FILE AS NO LONGER HAVING UNSAVED CHANGES.
+                // Since the file has been freshly opened, there are no unsaved changes.
+                unsavedStringFileModificationsExist = false;
+            }
+            catch (Exception exception)
+            {
+                const string MessageBoxCaption = "Open File Failed";
+                MessageBox.Show(
+                    this,
+                    GetErrorMessage(exception),
+                    MessageBoxCaption,
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Exclamation);
+            }
+        }
+
+        /// <summary>
+        /// Gets the path to the reference strings file to open from the user.
+        /// </summary>
+        /// <returns>The absolute path to the reference strings file to open or null
+        /// if the user canceled selecting a file.</returns>
+        private string GetPathForOpeningReferenceStringsFileFromUser()
+        {
+            // DISPLAY THE FILE OPEN DIALOG.
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = StringFileDialogFilters;
+            openFileDialog.Title = "Open Reference String File";
+            bool? dialogResult = openFileDialog.ShowDialog(this);
+
+            // DETERMINE WHAT THE USER CHOSE TO DO.
+            bool fileSpecified = (dialogResult.HasValue && dialogResult.Value);
+            if (!fileSpecified)
+            {
+                // Return indicating that the user canceled selecting a file.
+                return null;
+            }
+
+            return openFileDialog.FileName;
+        }
+
+        /// <summary>
+        /// Opens the reference strings file and updates the controls of this window to display the
+        /// content of the opened file.
+        /// </summary>
+        /// <param name="filePath">An absolute or relative path to the reference strings file to open.</param>
+        private void OpenAndDisplayReferenceStringsFile(string filePath)
+        {
+            try
+            {
+                // CLEAR THE DATA CONTEXT SO THAT IT APPEARS TO HAVE CHANGED.
+                // Clearing the data context will allow it to be updated with new contents once the file is loaded.
+                StringComparisonsControl.DataContext = null;
+
+                // LOAD THE FILE.
+                stringComparisonViewModel.LoadReferenceStrings(filePath);
+
+                // SET THE DATA CONTEXT.
+                StringComparisonsControl.DataContext = stringComparisonViewModel;
+            }
+            catch (Exception exception)
+            {
+                const string MessageBoxCaption = "Open File Failed";
+                MessageBox.Show(
+                    this,
+                    GetErrorMessage(exception),
+                    MessageBoxCaption,
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Exclamation);
+            }
+        }
+
+        /// <summary>
+        /// Gets the path to the strings file to save from the user.
+        /// </summary>
+        /// <returns>The absolute path to the strings file to save or null
+        /// if the user canceled selecting a file.</returns>
+        private string GetPathForSavingStringsFileFromUser()
+        {
+            // DISPLAY THE FILE SAVE DIALOG.
+            SaveFileDialog saveFileDialog = new SaveFileDialog();
+            saveFileDialog.Filter = StringFileDialogFilters;
+            saveFileDialog.Title = "Save As";
+            bool? dialogResult = saveFileDialog.ShowDialog(this);
+
+            // DETERMINE WHAT THE USER CHOSE TO DO.
+            bool fileSpecified = (dialogResult.HasValue && dialogResult.Value);
+            if (!fileSpecified)
+            {
+                // Exit indicating that the user canceled selecting a file.
+                return null;
+            }
+
+            return saveFileDialog.FileName;
+        }
+
+        /// <summary>
+        /// Saves the strings file.  The current strings file path and unsaved changes flag are also updated.
+        /// </summary>
+        /// <param name="filePath">An absolute or relative path to the strings file to save.</param>
+        private void SaveStringsFile(string filePath)
+        {
+            try
+            {
+                // SAVE THE FILE.
+                stringComparisonViewModel.SaveStrings(filePath);
+
+                // MARK THE FILE AS NO LONGER HAVING UNSAVED CHANGES.
+                unsavedStringFileModificationsExist = false;
+
+                // UPDATE THE CURRENT STRING FILE PATH.
+                currentStringsFilePath = filePath;
+            }
+            catch (Exception exception)
+            {
+                const string MessageBoxCaption = "Save File Failed";
+                MessageBox.Show(
+                    this,
+                    GetErrorMessage(exception),
+                    MessageBoxCaption,
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Exclamation);
+            }
+        }
+
         #endregion
     }
 }
