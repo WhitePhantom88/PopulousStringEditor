@@ -202,6 +202,9 @@ namespace PopulousStringEditor
                     return;
                 }
 
+                // RESET THE DISPLAY OF THIS WINDOW FOR THE NEW STRINGS FILE.
+                ResetForNewStringsFile();
+
                 // OPEN AND DISPLAY THE CONTENTS OF THE REFERENCE STRINGS FILE.
                 OpenAndDisplayReferenceStringsFile(referenceStringsFilePath);
             }
