@@ -11,7 +11,7 @@
              only the edible strings will be displayed. -->
         <DataGrid ItemsSource="{Binding Path=StringComparisons }" AutoGenerateColumns="False"
             CanUserReorderColumns="True" CanUserResizeRows="False" CanUserSortColumns="False"
-            CanUserDeleteRows="False" CanUserAddRows="False">
+            CanUserDeleteRows="False" CanUserAddRows="False" CellEditEnding="DataGrid_CellEditEnding">
             <DataGrid.Columns>
                 
                 <!-- CREATE A COLUMN FOR DISPLAYING THE READ-ONLY REFERENCED STRINGS. -->

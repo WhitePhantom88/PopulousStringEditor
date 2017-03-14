@@ -85,8 +85,6 @@ namespace PopulousStringEditor
         #region Fields
         /// <summary>The view model for populating the string comparison view.</summary>
         private ViewModel.StringComparisonViewModel stringComparisonViewModel = new ViewModel.StringComparisonViewModel();
-        /// <summary>Indicates whether or not the strings file has unsaved changes./summary>
-        private bool unsavedStringFileModificationsExist = false;
         /// <summary>Holds the path to the strings file that is currently being modified.  If this field is null,
         /// then no path has been specified yet.</summary>
         private string currentStringsFilePath = null;
@@ -106,6 +104,16 @@ namespace PopulousStringEditor
             {
                 return stringComparisonViewModel.StringComparisons.Any(
                     currentStringComparison => !string.IsNullOrEmpty(currentStringComparison.ReferenceString));
+            }
+        }
+
+        /// <summary>Gets whether or not there are any unsaved edits to the strings file.</summary>
+        private bool UnsavedStringFileModificationsExist
+        {
+            get
+            {
+                bool anyUnsavedStringFileModificationsExist = StringComparisonsControl.HasBeenEdited;
+                return anyUnsavedStringFileModificationsExist;
             }
         }
         #endregion
@@ -158,7 +166,7 @@ namespace PopulousStringEditor
         private void NewStringsFileCommand_Executed(object sender, ExecutedRoutedEventArgs eventArguments)
         {
             // CHECK TO SEE IF THERE ARE ANY UNSAVED CHANGES.
-            if (unsavedStringFileModificationsExist)
+            if (UnsavedStringFileModificationsExist)
             {
                 // WARN THE USER ABOUT UNSAVED CHANGES AND ASK THEM WHAT THEY WANT TO DO.
                 const string UnsavedChangesMessage = "Your strings file has unsaved changes.  Save before making a new file?";
@@ -230,6 +238,22 @@ namespace PopulousStringEditor
         /// <param name="eventArguments">The event arguments.</param>
         private void OpenStringsFileCommand_Executed(object sender, ExecutedRoutedEventArgs eventArguments)
         {
+            // CHECK TO SEE IF THERE ARE ANY UNSAVED CHANGES.
+            if (UnsavedStringFileModificationsExist)
+            {
+                // WARN THE USER ABOUT UNSAVED CHANGES AND ASK THEM WHAT THEY WANT TO DO.
+                const string UnsavedChangesMessage = "Your strings file has unsaved changes.  Save before opening a different file?";
+                bool userCanceledAction = false;
+                PromptUserAboutUnsavedChangesAndHandleDecision(UnsavedChangesMessage, out userCanceledAction);
+
+                // CHECK TO SEE IF THE USER CANCELED THEIR ACTION.
+                if (userCanceledAction)
+                {
+                    // Exit early since the user canceled this action.
+                    return;
+                }
+            }
+
             // PROMPT THE USER TO SPECIFY A FILE TO OPEN.
             string stringsFilePath = GetPathForOpeningStringFileFromUser();
             bool stringFilePathSpecified = !string.IsNullOrWhiteSpace(stringsFilePath);
@@ -263,22 +287,6 @@ namespace PopulousStringEditor
         /// <param name="eventArguments">The event arguments.</param>
         private void OpenReferenceStringsFileCommand_Executed(object sender, ExecutedRoutedEventArgs eventArguments)
         {
-            // CHECK TO SEE IF THERE ARE ANY UNSAVED CHANGES.
-            if (unsavedStringFileModificationsExist)
-            {
-                // WARN THE USER ABOUT UNSAVED CHANGES AND ASK THEM WHAT THEY WANT TO DO.
-                const string UnsavedChangesMessage = "Your strings file has unsaved changes.  Save before opening a different file?";
-                bool userCanceledAction = false;
-                PromptUserAboutUnsavedChangesAndHandleDecision(UnsavedChangesMessage, out userCanceledAction);
-
-                // CHECK TO SEE IF THE USER CANCELED THEIR ACTION.
-                if (userCanceledAction)
-                {
-                    // Exit early since the user canceled this action.
-                    return;
-                }
-            }
-
             // PROMPT THE USER TO SPECIFY A FILE TO OPEN.
             string referenceStringsFilePath = GetPathForOpeningReferenceStringsFileFromUser();
             bool referenceStringFilePathSpecified = !string.IsNullOrWhiteSpace(referenceStringsFilePath);
@@ -313,7 +321,7 @@ namespace PopulousStringEditor
         private void CloseAllFilesCommand_Executed(object sender, ExecutedRoutedEventArgs eventArguments)
         {
             // CHECK TO SEE IF THERE ARE ANY UNSAVED CHANGES.
-            if (unsavedStringFileModificationsExist)
+            if (UnsavedStringFileModificationsExist)
             {
                 // WARN THE USER ABOUT UNSAVED CHANGES AND ASK THEM WHAT THEY WANT TO DO.
                 const string UnsavedChangesMessage = "Your strings file has unsaved changes.  Save before closing files?";
@@ -333,6 +341,10 @@ namespace PopulousStringEditor
 
             // UPDATE THE CURRENT STRING FILE PATH.
             currentStringsFilePath = null;
+
+            // MARK THE FILE AS NO LONGER HAVING UNSAVED CHANGES.
+            // Since the file has been closed, there are no unsaved changes.
+            MarkAllStringFileModificationsAsSaved();
 
             // HIDE THE REFERENCE STRINGS COLUMN.
             // No reference strings are being displayed, so there's no need to waste
@@ -552,7 +564,7 @@ namespace PopulousStringEditor
 
             // MARK THE FILE AS NO LONGER HAVING UNSAVED CHANGES.
             // Since the file is new and empty, there are no unsaved changes.
-            unsavedStringFileModificationsExist = false;
+            MarkAllStringFileModificationsAsSaved();
         }
 
         /// <summary>
@@ -603,7 +615,7 @@ namespace PopulousStringEditor
 
                 // MARK THE FILE AS NO LONGER HAVING UNSAVED CHANGES.
                 // Since the file has been freshly opened, there are no unsaved changes.
-                unsavedStringFileModificationsExist = false;
+                MarkAllStringFileModificationsAsSaved();
             }
             catch (Exception exception)
             {
@@ -711,7 +723,7 @@ namespace PopulousStringEditor
                 stringComparisonViewModel.SaveStrings(filePath);
 
                 // MARK THE FILE AS NO LONGER HAVING UNSAVED CHANGES.
-                unsavedStringFileModificationsExist = false;
+                MarkAllStringFileModificationsAsSaved();
 
                 // UPDATE THE CURRENT STRING FILE PATH.
                 currentStringsFilePath = filePath;
@@ -726,6 +738,14 @@ namespace PopulousStringEditor
                     MessageBoxButton.OK,
                     MessageBoxImage.Exclamation);
             }
+        }
+
+        /// <summary>
+        /// Marks all of the unsaved modifications to the strings file as being saved.
+        /// </summary>
+        private void MarkAllStringFileModificationsAsSaved()
+        {
+            StringComparisonsControl.ClearHasBeenEdited();
         }
         #endregion
     }
